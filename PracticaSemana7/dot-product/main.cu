@@ -23,7 +23,7 @@ __global__ void dot_partial_kernel(const float *a, const float *b,
 
     float value = 0.0f;
     if (i < n) {
-        // TODO: Calcule el producto local a[i] * b[i].
+        value = a[i] * b[i];
     }
 
     cache[tid] = value;
@@ -31,7 +31,7 @@ __global__ void dot_partial_kernel(const float *a, const float *b,
 
     for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
         if (tid < stride) {
-            // TODO: Acumule en cache[tid] el valor de cache[tid + stride].
+            cache[tid] += cache[tid + stride];
         }
         __syncthreads();
     }
