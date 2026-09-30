@@ -1,12 +1,18 @@
-#  Instituto Tecnológico de Costa Rica
-#  Escuela de Ingeniería Electrónica
-#  Curso Introduccion a la Computacion Heterogenea 
-#  Profesor Dr. Luis Gerardo León vega
-#  Estudiante rodrigo Venegas Mora
-#  Practica semana /
+  Instituto Tecnológico de Costa Rica
+  
+  Escuela de Ingeniería Electrónica
+  
+  Curso Introduccion a la Computacion Heterogenea 
+  
+  Profesor Dr. Luis Gerardo León vega
+  
+  Estudiante Rodrigo Venegas Mora
+  
+  Practica semana 7
+  
 
 
-## Ejercicio A: Suma de vectores (`vector-add/`)
+## Ejercicio A: Suma de vectores 
 
 ### Código Completo
 
@@ -79,7 +85,7 @@ problema no sea múltiplo exacto del tamaño del bloque.
 
 En total: 2 transferencias Host → Device y 1 transferencia Device → Host.
 
-## Ejercicio B: Producto punto (`dot-product/`)
+## Ejercicio B: Producto punto 
 
 ### Código del kernel completado
 
@@ -185,7 +191,7 @@ syncthreads() garantiza que todos los hilos del bloque lleguen a la barrera
 antes de continuar, asegurando que cada etapa vea los datos ya actualizados por
 la etapa anterior.
 
-## Ejercicio C: Softmax (`softmax/`)
+## Ejercicio C: Softmax
 
 ### Código del kernel completado
 
@@ -270,10 +276,10 @@ softmax rows=256 cols=2048: OK
 
 **1. ¿Por qué se calcula primero el máximo de cada fila?**
 
-Por **estabilidad numérica**. La función `exp(x)` crece muy rápido: para
-`x > ~88` en `float` ya devuelve `inf`. Si la fila tuviera valores grandes (por
-ejemplo `100`, `200`, `300`), al calcular `exp(100)` se desbordaría y el
-resultado sería `inf` o `NaN` tras dividir `inf / inf`.
+Por estabilidad numérica. La función exp(x) crece muy rápido: para
+x > ~88 en float ya devuelve inf. Si la fila tuviera valores grandes (por
+ejemplo 100, 200, 300), al calcular exp(100) se desbordaría y el
+resultado sería inf o NaN tras dividir inf / inf.
 
 Restando el máximo de la fila antes de exponenciar:
 
@@ -281,15 +287,15 @@ Restando el máximo de la fila antes de exponenciar:
 y = exp(x - max)
 ```
 
-nos aseguramos de que el mayor exponente sea `exp(0) = 1`, y todos los demás
-son `≤ 1`. Ningún término se desborda. Matemáticamente el resultado es el mismo,
+se asegura que el mayor exponente sea exp(0) = 1, y todos los demás
+son menor o igual a 1, asi ningún término se desborda. Matemáticamente el resultado es el mismo,
 porque:
 
 ```
 softmax(x)_i = exp(x_i - m) / Σ_j exp(x_j - m)
 ```
 
-El factor `exp(-m)` aparece tanto en el numerador como en el denominador y se
+El factor exp(-m) aparece tanto en el numerador como en el denominador y se
 cancela.
 
 ---
@@ -298,35 +304,30 @@ cancela.
 
 Tres partes:
 
-- **Reducción del máximo de la fila**: todos los hilos aportan su máximo local y
-  se combinan en `cache[]` con `fmaxf`.
-- **Reducción de la suma de exponenciales**: todos los hilos aportan su suma
-  local y se combinan con `+=`.
-- **Normalización**: cada hilo divide sus elementos entre `row_sum`, que fue
+- Reducción del máximo de la fila: todos los hilos aportan su máximo local y
+  se combinan en cache[] con fmaxf.
+- Reducción de la suma de exponenciales: todos los hilos aportan su suma
+  local y se combinan con +=.
+- Normalización: cada hilo divide sus elementos entre row_sum, que fue
   calculado colectivamente.
 
-Las tres requieren `__syncthreads()` entre etapas para evitar condiciones de
+Las tres requieren syncthreads() entre etapas para evitar condiciones de
 carrera.
 
 ---
 
-**3. ¿Qué limitación tiene usar un solo bloque por fila cuando `cols` crece mucho?**
+**3. ¿Qué limitación tiene usar un solo bloque por fila cuando cols crece mucho?**
 
-Varias limitaciones:
 
-- **Tamaño máximo del bloque**: una GPU típica admite hasta **1024 hilos por
-  bloque**. Si `cols` es mucho mayor (por ejemplo 1 000 000), cada hilo debe
+- Tamaño máximo del bloque: una GPU típica admite hasta 1024 hilos por
+  bloque. Si cols es mucho mayor (por ejemplo 1 000 000), cada hilo debe
   procesar muchas columnas en un bucle, y la reducción solo usa 1024 hilos →
   subutilización.
-- **Memoria compartida limitada**: aunque el `cache[]` solo tiene
-  `blockDim.x` floats, el patrón un-bloque-por-fila desperdicia recursos cuando
-  `cols` es muy grande, porque la mayor parte del trabajo ocurre en bucles
+- Memoria compartida limitada: aunque el cache[] solo tiene
+  blockDim.x floats, el patrón un-bloque-por-fila desperdicia recursos cuando
+  cols es muy grande, porque la mayor parte del trabajo ocurre en bucles
   seriales por hilo.
-- **Ocupancia baja**: si `rows` es pequeño y `cols` enorme, hay pocos bloques
+- Ocupancia baja: si rows es pequeño y cols enorme, hay pocos bloques
   lanzados, y la GPU queda mayoritariamente ociosa.
-- **Escalabilidad limitada**: el algoritmo no aprovecha el paralelismo masivo
-  disponible cuando `cols` supera ampliamente el tamaño del bloque.
-
-En esos casos conviene **dividir la fila en varios bloques** y combinar los
-resultados con una segunda pasada o una operación atómica, o usar `grid-stride
-loops` con más hilos cooperando.
+- Escalabilidad limitada: el algoritmo no aprovecha el paralelismo masivo
+  disponible cuando cols supera ampliamente el tamaño del bloque.
