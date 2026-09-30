@@ -27,7 +27,7 @@ __global__ void softmax_rows_kernel(const float *input, float *output, int rows,
 
     float local_max = -INFINITY;
     for (int col = tid; col < cols; col += blockDim.x) {
-        // TODO: Actualice local_max con el maximo de la fila.
+        local_max = fmaxf(local_max, input[row * cols + col]);
     }
 
     cache[tid] = local_max;
@@ -35,7 +35,7 @@ __global__ void softmax_rows_kernel(const float *input, float *output, int rows,
 
     for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
         if (tid < stride) {
-            // TODO: Reduzca los maximos usando fmaxf.
+            cache[tid] = fmaxf(cache[tid], cache[tid + stride]);
         }
         __syncthreads();
     }
@@ -45,8 +45,9 @@ __global__ void softmax_rows_kernel(const float *input, float *output, int rows,
     float local_sum = 0.0f;
     for (int col = tid; col < cols; col += blockDim.x) {
         int idx = row * cols + col;
-        // TODO: Calcule expf(input[idx] - row_max), guardelo en output[idx]
-        // y acumule el valor en local_sum.
+        float e = expf(input[idx] - row_max);
+        output[idx] = e;
+        local_sum += e;
     }
 
     cache[tid] = local_sum;
@@ -54,7 +55,7 @@ __global__ void softmax_rows_kernel(const float *input, float *output, int rows,
 
     for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
         if (tid < stride) {
-            // TODO: Reduzca las sumas parciales.
+            cache[tid] += cache[tid + stride];
         }
         __syncthreads();
     }
@@ -63,8 +64,7 @@ __global__ void softmax_rows_kernel(const float *input, float *output, int rows,
 
     for (int col = tid; col < cols; col += blockDim.x) {
         int idx = row * cols + col;
-        // TODO: Normalice output[idx] dividiendo entre row_sum.
-        (void)idx;
+        output[idx] /= row_sum;
     }
 }
 
